@@ -158,7 +158,6 @@ class Bert_Embedder(nn.Module):
         tokens_id_padding_lists = torch.LongTensor(tokens_id_padding_lists)
         if self.split is True:
             max_token_len = max(map(lambda x: len(x[0]), tokens_subword_index_lists))
-            # 使得所有tokens_subword_index都有max_len个token的位置
             rel_max_len = max_len = max(map(lambda x: len(x), tokens_lists))
             for idx, tokens_subword_index in enumerate(tokens_subword_index_lists):
                 padding_token_num = rel_max_len - len(tokens_subword_index)
