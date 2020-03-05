@@ -10,15 +10,15 @@ tokens_list = """i hate this
     '\n')
 tokens_list = list(map(lambda x: x.split(), tokens_list))
 
-# 使用glove embedding
-def test_glove():
-    from glove import Glove_Embedder
-    glove_embedder = Glove_Embedder(word_file='./data/bert_vocab.txt',
-                                    glove_file='./data/glove.840B.300d.txt',  # glove词表
+# 使用word2vec embedding
+def test_word2vec():
+    from word2vec import word2vec_Embedder
+    word2vec_embedder = word2vec_Embedder(word_file='./data/bert_vocab.txt',
+                                    word2vec_file='./data/word2vec.840B.300d.txt',  # word2vec词表
                                     static=False,
                                     use_gpu=True)
-    glove_embedder = glove_embedder.cuda()
-    embedding = glove_embedder(tokens_list)
+    word2vec_embedder = word2vec_embedder.cuda()
+    embedding = word2vec_embedder(tokens_list)
     print(embedding.size())
 
 def test_bert():
@@ -31,5 +31,5 @@ def test_bert():
     bert_embedder = bert_embedder.cuda()
     embedding, pooled_out = bert_embedder(tokens_list)
     print(embedding.size())
-test_glove()
+test_word2vec()
 test_bert()
