@@ -6,14 +6,14 @@
 @File : test_embedding.py
 """
 tokens_list = """i hate this
-   i am your friend""".lower().split(
+   i am yourtrain""".lower().split(
     '\n')
 tokens_list = list(map(lambda x: x.split(), tokens_list))
 
 # 使用word2vec embedding
 def test_word2vec():
-    from word2vec import word2vec_Embedder
-    word2vec_embedder = word2vec_Embedder(word_file='./data/bert_vocab.txt',
+    from word2vec import Word2vec_Embedder
+    word2vec_embedder = Word2vec_Embedder(word_file='./data/bert_vocab.txt',
                                     word2vec_file='./data/glove.840B.300d.txt',  # word2vec词表
                                     static=False,
                                     use_gpu=True)

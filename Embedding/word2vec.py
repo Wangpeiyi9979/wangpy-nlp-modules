@@ -88,7 +88,7 @@ class Word2vec_Embedder(nn.Module):
         cpu_count = multiprocessing.cpu_count()
         p = multiprocessing.Pool(cpu_count)
         process_reses = []
-        print("多进程读取word2vec文件(cpu核数:{})..".format(cpu_count))
+        print("多进程从{}读取词向量(cpu核数:{})..".format(word2vec_file, cpu_count))
 
         size = math.ceil(len(lines) / cpu_count)
         for index in range(cpu_count):

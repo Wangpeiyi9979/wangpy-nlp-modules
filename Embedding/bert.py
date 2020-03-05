@@ -106,6 +106,7 @@ class My_Bert_Encoder(BertModel):
         divisor = (num_valid_subwords + pad_mask).unsqueeze(2).type_as(sum_token_reprs)
         # [batch_size, num_tokens, hidden_size]
         avg_token_reprs = sum_token_reprs / divisor
+        import ipdb; ipdb.set_trace()
         return avg_token_reprs
 
 class Bert_Embedder(nn.Module):
