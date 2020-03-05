@@ -1,10 +1,10 @@
 # Embedding层封装
-## glove
+## word2vec
 ### 创建embedder
 ```python
-from glove import Glove_Embedder
-glove_embedder = Glove_Embedder(word_file='./data/bert_vocab.txt',
-                                glove_file='./data/glove.840B.300d.txt',
+from word2vec import word2vec_Embedder
+word2vec_embedder = word2vec_Embedder(word_file='./data/bert_vocab.txt',
+                                word2vec_file='./data/word2vec.840B.300d.txt',
                                 static=False,
                                 use_gpu=True)
 ```
@@ -15,14 +15,14 @@ word2
 word3
 ....
 ```
-- `glove_file`: glove词向量文件。见https://nlp.stanford.edu/projects/glove/
-- `static`: 表示是否更新glove embedding参数
+- `word2vec_file`: 词向量文件。例如word2vec, 见https://nlp.stanford.edu/projects/word2vec/
+- `static`: 表示是否更新word2vec embedding参数
 - `use_gpu`: 是否使用gpu
 
 ### 使用embedder
 ```python
 tokens_list=[['i','hate','this'],['i','am','your','friend']]
-embedding = glove_embedder(tokens_list)
+embedding = word2vec_embedder(tokens_list)
 ```
 - `tokens_list:` `batch_size`个切分为单词列表的句子，不用一样长
 - `embedding`: 一个`(batch_size x max_length x word_dim)`的Tensor.多余的对应着`@PADDING_TOKEN@`的embedding.
@@ -47,7 +47,7 @@ tokens_list=[['i','hate','this'],['i','am','your','friend']]
 embedding, pooled_out = bert_embedder(tokens_list)
 ```
 - 输入:
-    - `tokens_list:`同glove输入一样, `batch_size`个切分为单词列表的句子，不用一样长.
+    - `tokens_list:`同word2vec输入一样, `batch_size`个切分为单词列表的句子，不用一样长.
 - 输出:
     - `embedding`: 
         - 若`split`为`True`: 则返回`(batch_size x max_length x word_dim)`的Tensor, `[PAD]`的向量为0

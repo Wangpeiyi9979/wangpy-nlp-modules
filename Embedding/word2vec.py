@@ -3,7 +3,7 @@
 @Time: 2020/3/4 11:09
 @Author: Wang Peiyi
 @Site : 
-@File : glove.py
+@File : word2vec.py
 """
 import math
 import torch
@@ -13,32 +13,32 @@ from tqdm import tqdm
 import multiprocessing
 
 
-class Glove_Embedder(nn.Module):
+class Word2vec_Embedder(nn.Module):
 
-    def __init__(self, word_file: str, glove_file: str, static=False, use_gpu=True, UNKNOW_TOKEN='@UNKNOW@',
+    def __init__(self, word_file: str, word2vec_file: str, static=False, use_gpu=True, UNKNOW_TOKEN='@UNKNOW@',
                  PADDING_TOKEN='@PADDING@'):
         """
         @param word_file: 存储具体任务单词的txt文件，每一行是一个单词
-        @param glove_file: 原始的glove文件，如"glove.840B.300d.txt"
-        @param static: 表示是否更新glove embedding的参数，默认更新
+        @param word2vec_file: 原始的word2vec文件，如"word2vec.840B.300d.txt"
+        @param static: 表示是否更新word2vec embedding的参数，默认更新
         @param use_gpu: 是否使用gpu
         @param UNKNOW_TOKEN: 代表UNKONW单词
         @param PADDING_TOKEN: 代表PADDING单词
         """
-        super(Glove_Embedder, self).__init__()
-        self.left_word_num = 0  # 用来glove中丢失的原始vocab单词数
+        super(Word2vec_Embedder, self).__init__()
+        self.left_word_num = 0  # 用来word2vec中丢失的原始vocab单词数
         self.UNKNOW_TOKEN = UNKNOW_TOKEN
         self.PADDING_TOKEN = PADDING_TOKEN
         self.static = static
         self.use_gpu = use_gpu
         self.vocab_size, self.word2id, self.id2word = self._get_vocab_size_and_word2id(word_file)
-        self.word_dim, self.embedder = self._get_word_dim_and_embedder(glove_file)
+        self.word_dim, self.embedder = self._get_word_dim_and_embedder(word2vec_file)
 
         self.report_info()
 
     def report_info(self):
         print(
-            "glove embedder构建完成, glove丢失单词数:{}/{}, 是否更新glove embedding: {}\n传入token列表得到词向量, 如[['i','hate','this'],['i','am','your','friend']]".format(
+            "word2vec embedder构建完成, word2vec丢失单词数:{}/{}, 是否更新word2vec embedding: {}\n传入token列表得到词向量, 如[['i','hate','this'],['i','am','your','friend']]".format(
                 self.left_word_num, self.vocab_size, not self.static))
 
     def _get_vocab_size_and_word2id(self, word_file: str):
@@ -59,9 +59,9 @@ class Glove_Embedder(nn.Module):
         id2word = {k: v for v, k in word2id.items()}
         return len(word2id), word2id, id2word
 
-    def _parse_glove_lines(self, lines):
+    def _parse_word2vec_lines(self, lines):
         """
-        提取出glove的词向量, 单独写一个函数，是为了多进程读取
+        提取出word2vec的词向量, 单独写一个函数，是为了多进程读取
         @param lines:
         @return: word2vec
         """
@@ -73,29 +73,29 @@ class Glove_Embedder(nn.Module):
             word2vec[word] = vec
         return word2vec
 
-    def _get_word_dim_and_embedder(self, glove_file: str):
+    def _get_word_dim_and_embedder(self, word2vec_file: str):
         """
-        @param glove_file: 见__init__参数glove_file
+        @param word2vec_file: 见__init__参数word2vec_file
         @return:
             word_dim(int): 单词的embedding维数
-            embedder:(nn.Embedding), 这里就是用glove_file去初始化nn.Embedding的look up table
+            embedder:(nn.Embedding), 这里就是用word2vec_file去初始化nn.Embedding的look up table
         """
 
-        with open(glove_file, 'r') as f:
+        with open(word2vec_file, 'r') as f:
             lines = f.readlines()
 
         import multiprocessing
         cpu_count = multiprocessing.cpu_count()
         p = multiprocessing.Pool(cpu_count)
         process_reses = []
-        print("多进程读取glove文件(cpu核数:{})..".format(cpu_count))
+        print("多进程读取word2vec文件(cpu核数:{})..".format(cpu_count))
 
         size = math.ceil(len(lines) / cpu_count)
         for index in range(cpu_count):
             start = index * size
             end = min((index + 1) * size, len(lines))
             sub_data = lines[start:end]
-            process_reses.append(p.apply_async(self._parse_glove_lines, args=(sub_data,)))
+            process_reses.append(p.apply_async(self._parse_word2vec_lines, args=(sub_data,)))
         p.close()
         p.join()
         print("读取完成..")
@@ -108,7 +108,7 @@ class Glove_Embedder(nn.Module):
         print("构造vocab中单词的look up table..")
         for id in tqdm(range(self.vocab_size)):
             word = self.id2word[id]
-            vec = word2vec.get(word, None)  # 单词如果不在glove中，随机初始化一个向量
+            vec = word2vec.get(word, None)  # 单词如果不在word2vec中，随机初始化一个向量
             if vec is None:
                 vec = np.random.randn(word_dim)
                 self.left_word_num += 1
