@@ -61,7 +61,7 @@ class Glove_Embedder(nn.Module):
 
     def _parse_glove_lines(self, lines):
         """
-        提取出glove的词向量
+        提取出glove的词向量, 单独写一个函数，是为了多进程读取
         @param lines:
         @return: word2vec
         """
