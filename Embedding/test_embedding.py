@@ -14,7 +14,7 @@ tokens_list = list(map(lambda x: x.split(), tokens_list))
 def test_word2vec():
     from word2vec import word2vec_Embedder
     word2vec_embedder = word2vec_Embedder(word_file='./data/bert_vocab.txt',
-                                    word2vec_file='./data/word2vec.840B.300d.txt',  # word2vec词表
+                                    word2vec_file='./data/glove.840B.300d.txt',  # word2vec词表
                                     static=False,
                                     use_gpu=True)
     word2vec_embedder = word2vec_embedder.cuda()
