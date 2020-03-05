@@ -26,6 +26,8 @@ embedding = word2vec_embedder(tokens_list)
 ```
 - `tokens_list:` `batch_size`个切分为单词列表的句子，不用一样长
 - `embedding`: 一个`(batch_size x max_length x word_dim)`的Tensor.多余的对应着`@PADDING_TOKEN@`的embedding.
+### 其他
+如果提供的文件为空文件, 则词向量按正态分布随机初始化, 因此这个模块也可以用来作为`pos_tag`等的embedding.
 # Bert
 ### 创建embedder
 ```python
