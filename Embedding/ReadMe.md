@@ -35,7 +35,6 @@ bert_embedder = Bert_Embedder(vocab_dir='./data/bert_vocab.txt',  # bert词表
                               output_all_encoder_layers=False,
                               split=True,
                               use_gpu=True)
-
 ```
 - `vocab_dir`: bert词表
 - `bert_model_dir`: bert预训练模型参数
