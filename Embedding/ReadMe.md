@@ -9,12 +9,12 @@ glove_embedder = Glove_Embedder(word_file='./data/bert_vocab.txt',
                                 use_gpu=True)
 ```
 - `word_file`: 特定任务对应的词库，一行为一个单词。自动添加`@UNKNOW_TOKEN@`和`@PADDING_TOKEN@`。
-    ```
-    word1
-    word2
-    word3
-    ....
-    ```
+```
+word1
+word2
+word3
+....
+```
 - `glove_file`: glove词向量文件。见https://nlp.stanford.edu/projects/glove/
 - `static`: 表示是否更新glove embedding参数
 - `use_gpu`: 是否使用gpu
