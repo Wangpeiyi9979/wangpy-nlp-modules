@@ -4,7 +4,7 @@
 ```python
 from word2vec import word2vec_Embedder
 word2vec_embedder = word2vec_Embedder(word_file='./data/bert_vocab.txt',
-                                word2vec_file='./data/word2vec.840B.300d.txt',
+                                word2vec_file='./data/glove.840B.300d.txt',
                                 static=False,
                                 use_gpu=True)
 ```
@@ -15,7 +15,7 @@ word2
 word3
 ....
 ```
-- `word2vec_file`: 词向量文件。例如word2vec, 见https://nlp.stanford.edu/projects/word2vec/
+- `word2vec_file`: 词向量文件。例如glove, 见https://nlp.stanford.edu/projects/word2vec/
 - `static`: 表示是否更新word2vec embedding参数
 - `use_gpu`: 是否使用gpu
 
