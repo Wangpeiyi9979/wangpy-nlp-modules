@@ -34,7 +34,7 @@ class Word2vec_Embedder(nn.Module):
         self.vocab_size, self.word2id, self.id2word = self._get_vocab_size_and_word2id(word_file)
         self.word_dim, self.embedder = self._get_word_dim_and_embedder(word2vec_file)
 
-        self.report_info()
+        self._report_info()
 
     def conver_tokens_to_ids(self, tokens_lists):
         """
@@ -45,7 +45,16 @@ class Word2vec_Embedder(nn.Module):
                 tokens_lists))
         return tokens_id_lists
 
-    def report_info(self):
+    def convcer_id_to_tokens(self, id_lists):
+        """
+        将id转换为对应的单词
+        """
+        tokens_lists = list(
+            map(lambda x: list(map(lambda w: self.id2word.get(w, self.id2word[0]), x)),
+                id_lists))
+        return tokens_lists
+
+    def _report_info(self):
         print(
             "word2vec embedder构建完成, word2vec丢失单词数:{}/{}, 是否更新word2vec embedding: {}\n传入token列表得到词向量, 如[['i','hate','this'],['i','am','your','friend']]".format(
                 self.left_word_num, self.vocab_size, not self.static))
