@@ -36,6 +36,15 @@ class Word2vec_Embedder(nn.Module):
 
         self.report_info()
 
+    def conver_tokens_to_ids(self, tokens_lists):
+        """
+        将单词列表转换为对应的id表达式
+        """
+        tokens_id_lists = list(
+            map(lambda x: list(map(lambda w: self.word2id.get(w, self.word2id[self.UNKNOW_TOKEN]), x)),
+                tokens_lists))
+        return tokens_id_lists
+
     def report_info(self):
         print(
             "word2vec embedder构建完成, word2vec丢失单词数:{}/{}, 是否更新word2vec embedding: {}\n传入token列表得到词向量, 如[['i','hate','this'],['i','am','your','friend']]".format(
@@ -133,9 +142,7 @@ class Word2vec_Embedder(nn.Module):
         """
         max_len = max(map(lambda x: len(x), tokens_lists))
         # 将句子单词装换为单词id表示
-        tokens_id_lists = list(
-            map(lambda x: list(map(lambda w: self.word2id.get(w, self.word2id[self.UNKNOW_TOKEN]), x)),
-                tokens_lists))
+        tokens_id_lists = self.conver_tokens_to_ids(tokens_lists)
         # 按最长句子进行padding
         tokens_padding_id_lists = list(
             map(lambda x: x + [self.word2id[self.PADDING_TOKEN]] * (max_len - len(x)), tokens_id_lists))
