@@ -26,3 +26,11 @@ if __name__ == '__main__':
     sample = torch.LongTensor([4,5,6])
     print(sample)
     print(sequence_mask(sample).float())
+
+
+    """
+    tensor([4, 5, 6])
+    tensor([[1., 1., 1., 1., 0., 0.],
+            [1., 1., 1., 1., 1., 0.],
+            [1., 1., 1., 1., 1., 1.]])
+    """
