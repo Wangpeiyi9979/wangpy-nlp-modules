@@ -7,6 +7,7 @@
 """
 import math
 import torch
+import os
 import torch.nn as nn
 import numpy as np
 from tqdm import tqdm
@@ -15,8 +16,8 @@ import multiprocessing
 
 class Word2vec_Embedder(nn.Module):
 
-    def __init__(self, word_file: str, word2vec_file: str, static=False, use_gpu=True, UNKNOW_TOKEN='@UNKNOW@',
-                 PADDING_TOKEN='@PADDING@'):
+    def __init__(self, word_file: str, word2vec_file=None, static=False, use_gpu=True, UNKNOW_TOKEN='[UNK]',
+                 PADDING_TOKEN='[PAD]', npy_file=None, word_dim=None):
         """
         @param word_file: 存储具体任务单词的txt文件，每一行是一个单词
         @param word2vec_file: 原始的word2vec文件，如"word2vec.840B.300d.txt"
@@ -24,6 +25,8 @@ class Word2vec_Embedder(nn.Module):
         @param use_gpu: 是否使用gpu
         @param UNKNOW_TOKEN: 代表UNKONW单词
         @param PADDING_TOKEN: 代表PADDING单词
+        @param npy_file: 每次从word2vec中加载太慢了，第一次加载后存入npy文件，最后再读取
+        @param word_dim: 当word2vec_file和npy_file都没有给定时，使用embedding_size初始化
         """
         super(Word2vec_Embedder, self).__init__()
         self.left_word_num = 0  # 用来word2vec中丢失的原始vocab单词数
@@ -32,31 +35,28 @@ class Word2vec_Embedder(nn.Module):
         self.static = static
         self.use_gpu = use_gpu
         self.vocab_size, self.word2id, self.id2word = self._get_vocab_size_and_word2id(word_file)
-        self.word_dim, self.embedder = self._get_word_dim_and_embedder(word2vec_file)
+        self.npy_file = npy_file
 
-        self._report_info()
+        if npy_file is not None:
+            if os.path.exists(npy_file):
+                self.word_dim, self.embedder = self._get_word_dim_and_embedder_from_npy(npy_file)
+            else:
+                self.word_dim, self.embedder = self._get_word_dim_and_embedder_from_txt(word2vec_file)
+        elif word2vec_file is not None:
+            self.word_dim, self.embedder = self._get_word_dim_and_embedder_from_txt(word2vec_file)
 
-    def conver_tokens_to_ids(self, tokens_lists):
-        """
-        将单词列表转换为对应的id表达式
-        """
-        tokens_id_lists = list(
-            map(lambda x: list(map(lambda w: self.word2id.get(w, self.word2id[self.UNKNOW_TOKEN]), x)),
-                tokens_lists))
-        return tokens_id_lists
+        else:
+            self.left_word_num = self.vocab_size
+            if word_dim is None:
+                raise EnvironmentError("word2vec_file、npy_file and word_dim are can not be all None")
+            self.word_dim = word_dim
+            self.embedder = nn.Embedding(self.vocab_size, self.word_dim)
 
-    def convcer_id_to_tokens(self, id_lists):
-        """
-        将id转换为对应的单词
-        """
-        tokens_lists = list(
-            map(lambda x: list(map(lambda w: self.id2word.get(w, self.id2word[0]), x)),
-                id_lists))
-        return tokens_lists
+        self.report_info()
 
-    def _report_info(self):
+    def report_info(self):
         print(
-            "word2vec embedder构建完成, word2vec丢失单词数:{}/{}, 是否更新word2vec embedding: {}\n传入token列表得到词向量, 如[['i','hate','this'],['i','am','your','friend']]".format(
+            "InFo: word2vec embedder构建完成, word2vec丢失单词数:{}/{}, 是否更新word2vec embedding: {}".format(
                 self.left_word_num, self.vocab_size, not self.static))
 
     def _get_vocab_size_and_word2id(self, word_file: str):
@@ -67,13 +67,11 @@ class Word2vec_Embedder(nn.Module):
             word2id: dict[str: int], 映射单词到id的字典
             id2word: dict[int: str]
         """
-        word2id = {self.PADDING_TOKEN: 0,
-                   self.UNKNOW_TOKEN: 1}
+        word2id = {}
         with open(word_file, 'r') as f:
             words = f.readlines()
-            words = set(words)
             for idx, word in enumerate(words):
-                word2id[word.strip()] = idx + 2
+                word2id[word.strip()] = idx
         id2word = {k: v for v, k in word2id.items()}
         return len(word2id), word2id, id2word
 
@@ -91,7 +89,7 @@ class Word2vec_Embedder(nn.Module):
             word2vec[word] = vec
         return word2vec
 
-    def _get_word_dim_and_embedder(self, word2vec_file: str):
+    def _get_word_dim_and_embedder_from_txt(self, word2vec_file: str):
         """
         @param word2vec_file: 见__init__参数word2vec_file
         @return:
@@ -132,7 +130,12 @@ class Word2vec_Embedder(nn.Module):
                 self.left_word_num += 1
             look_up_table.append(vec)
 
-        look_up_table = torch.from_numpy(np.array(look_up_table))
+        look_up_table = np.array(look_up_table)
+        if self.npy_file is not None:
+            if not os.path.exists(self.npy_file):
+                np.save(self.npy_file, look_up_table)
+
+        look_up_table = torch.from_numpy(look_up_table)
         if self.use_gpu:
             look_up_table.cuda()
         embedder = nn.Embedding(self.vocab_size, word_dim)
@@ -143,6 +146,19 @@ class Word2vec_Embedder(nn.Module):
 
         return word_dim, embedder
 
+    def _get_word_dim_and_embedder_from_npy(self, npy_file):
+        self.left_word_num = 'x'
+        look_up_table = np.load(npy_file)
+        look_up_table = torch.from_numpy(look_up_table)
+        word_dim = len(look_up_table[0])
+        if self.use_gpu:
+            look_up_table.cuda()
+        embedder = nn.Embedding(self.vocab_size, word_dim)
+        embedder.weight.data.copy_(look_up_table)
+        if self.static is True:
+            embedder.weight.requires_grad = False
+        return word_dim, embedder
+
     def forward(self, tokens_lists):
         """
         @param tokenss(n*list:str): n个句子, 输入的相当于一个batch
@@ -151,7 +167,10 @@ class Word2vec_Embedder(nn.Module):
         """
         max_len = max(map(lambda x: len(x), tokens_lists))
         # 将句子单词装换为单词id表示
-        tokens_id_lists = self.conver_tokens_to_ids(tokens_lists)
+        tokens_id_lists = list(
+            map(lambda x: list(map(lambda w: self.word2id.get(w, self.word2id[self.UNKNOW_TOKEN]), x)),
+                tokens_lists))
+
         # 按最长句子进行padding
         tokens_padding_id_lists = list(
             map(lambda x: x + [self.word2id[self.PADDING_TOKEN]] * (max_len - len(x)), tokens_id_lists))
