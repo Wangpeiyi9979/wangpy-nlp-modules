@@ -143,7 +143,7 @@ class Bert_Embedder(nn.Module):
                      注意，原始bert输出的词向量，padding的词的输出词向量不为0
                 split为True: 将不再bert词表中的词切分为更小的词单元
                     输出：Tensor(n, max_length+2, word_dim):n个句子中token的embedding, L长的句子中，其embedding只有前L个向量不为0，
-                    tokenize的的时候先添加了[CLS]和[SEP]
+                    tokenize的的时候先添加了[CLS]和[SEP], 由于最后操作问题,[CLS]的表示向量为0, 如果想用cls，使用pool_out
             pooled_out: Tensor(n, hidden_size): 每个句子最后一层encoder的第一个词[CLS]经过Linear层和激活函数Tanh()后的Tensor. 其代表了句子信息
         """
         tokens_id_lists_with_cls_sep = []
