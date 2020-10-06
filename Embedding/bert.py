@@ -130,12 +130,14 @@ class Bert_Embedder(nn.Module):
         self.use_gpu = use_gpu
         self.tokenizer = My_Bert_Tokenizer.from_pretrained(vocab_dir)
         self.bert_encoder = My_Bert_Encoder.from_pretrained(bert_model_dir)
-        print("InFo: bert embeder构建完成\n传入token列表得到词向量如[['i','hate','this'],['i','am','your','friend']].")
-    def forward(self, tokens_lists_no_cls_sep):
+        print("InFo: bert embeder构建完成")
+    def forward(self, tokens_lists_no_cls_sep, token_type_ids=None):
         """
         @param tokens_lists_no_cls_sep: tokens(n*list:str): n个句子, 输入的相当于一个batch, 长度不需要相等, 为了和其他词向量使用保持一致，
                                                  输入句子不需要有[CLS]和[SEP], 并且输入句子不应该进行PADDING
                 attention_mask自动根据输入padding构建，token type以SEP为分隔自动构建
+
+               token_type_ids: 当希望不连续地赋值segment_id为1时给定
         @return:
             embeddings:
                 split为False：将不在bert词表中的词替换为，[UNK], 首尾添加了Bert特有的[CLS]和[SEP]，然后转换为id，送入bert
@@ -143,12 +145,11 @@ class Bert_Embedder(nn.Module):
                      注意，原始bert输出的词向量，padding的词的输出词向量不为0
                 split为True: 将不再bert词表中的词切分为更小的词单元
                     输出：Tensor(n, max_length+2, word_dim):n个句子中token的embedding, L长的句子中，其embedding只有前L个向量不为0，
-                    tokenize的的时候先添加了[CLS]和[SEP], 由于最后操作问题,[CLS]的表示向量为0, 如果想用cls，使用pool_out
+                    tokenize的的时候先添加了[CLS]和[SEP]
             pooled_out: Tensor(n, hidden_size): 每个句子最后一层encoder的第一个词[CLS]经过Linear层和激活函数Tanh()后的Tensor. 其代表了句子信息
         """
         tokens_id_lists_with_cls_sep = []
         tokens_subword_index_lists = []
-        token_type_ids = []
         for tokens in tokens_lists_no_cls_sep:
             tokens_id, tokens_subword_index = self.tokenizer.tokenize(tokens, split=self.split)
             tokens_id_lists_with_cls_sep.append(tokens_id.tolist())
@@ -161,15 +162,6 @@ class Bert_Embedder(nn.Module):
         tokens_id_padding_lists_with_cls_sep = np.array(tokens_id_padding_lists_with_cls_sep)
         tokens_id_padding_lists_with_cls_sep = torch.LongTensor(tokens_id_padding_lists_with_cls_sep)
 
-        for token_ids in tokens_id_padding_lists_with_cls_sep:
-            type_id = 0
-            type_id_list = []
-            for token_id in token_ids:
-                if token_id == self.tokenizer.convert_tokens_to_ids(['[SEP]']):
-                    type_id = 1
-                type_id_list.append(type_id)
-            token_type_ids.append(type_id_list)
-        token_type_ids = torch.LongTensor(token_type_ids)
         if self.split is True:
             max_token_len = max(map(lambda x: len(x[0]), tokens_subword_index_lists))
             rel_max_len = max(map(lambda x: len(x), tokens_lists_no_cls_sep)) + 2 # 这里需要添加上CLS和SEP的长度
@@ -187,6 +179,38 @@ class Bert_Embedder(nn.Module):
         else:
             tokens_subword_index_lists = None
         attention_mask = tokens_id_padding_lists_with_cls_sep.ne(0)
+
+
+        token_type_ids_create = []
+        if token_type_ids is None:
+            for token_ids in tokens_id_padding_lists_with_cls_sep:
+                type_id = 0
+                type_id_list = []
+                for token_id in token_ids:
+                    if token_id == self.tokenizer.convert_tokens_to_ids(['[SEP]']):
+                        type_id = 1
+                    type_id_list.append(type_id)
+                token_type_ids_create.append(type_id_list)
+            token_type_ids = torch.LongTensor(token_type_ids_create)
+
+        elif self.split is True:
+            for idx, token_type_id in enumerate(token_type_ids):
+                type_id_list = []
+                sub_word_index = tokens_subword_index_lists[idx]
+                for idy, single_type_id in enumerate(token_type_id):
+                    single_sub_word_index = sub_word_index[idy]
+                    type_id_list.append(single_type_id)
+                    for sub_word_unint in single_sub_word_index[1:]:
+                        if sub_word_unint != 0:
+                            type_id_list.append(single_type_id)
+                        else:
+                            break
+                if len(type_id_list) > max_len:
+                    type_id_list = type_id_list[:max_len]
+                else:
+                    type_id_list = type_id_list + [0] * (max_len - len(type_id_list))
+                token_type_ids_create.append(type_id_list)
+            token_type_ids = torch.LongTensor(token_type_ids_create)
 
         if self.use_gpu:
             tokens_id_padding_lists_with_cls_sep = tokens_id_padding_lists_with_cls_sep.cuda()
