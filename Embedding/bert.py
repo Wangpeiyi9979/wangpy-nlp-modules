@@ -41,8 +41,6 @@ class My_Bert_Tokenizer(BertTokenizer):
                     split_tokens.append(sub_token)
                 _gather_indexes.append(indexes)
 
-            # 这里去掉了CLS和SEP两个词
-            _gather_indexes = _gather_indexes[1:-1]
             max_index_list_len = max(len(indexes) for indexes in _gather_indexes)
             gather_indexes = np.zeros((len(_gather_indexes), max_index_list_len))
             for i, indexes in enumerate(_gather_indexes):
@@ -82,7 +80,14 @@ class My_Bert_Encoder(BertModel):
         if token_subword_index is None:
             return encoded_layers, pooled_output
         else:
-            return self.average_pooling(encoded_layers, token_subword_index), pooled_output
+            if output_all_encoded_layers is False:
+                return self.average_pooling(encoded_layers, token_subword_index), pooled_output
+            else:
+                average_pools = []
+                for encoded_layer in encoded_layers:
+                    average_pool = self.average_pooling(encoded_layer, token_subword_index)
+                    average_pools.append(average_pool)
+                return average_pools, pooled_output
 
     def average_pooling(self, encoded_layers, token_subword_index):
 
@@ -106,7 +111,6 @@ class My_Bert_Encoder(BertModel):
         divisor = (num_valid_subwords + pad_mask).unsqueeze(2).type_as(sum_token_reprs)
         # [batch_size, num_tokens, hidden_size]
         avg_token_reprs = sum_token_reprs / divisor
-        import ipdb; ipdb.set_trace()
         return avg_token_reprs
 
 class Bert_Embedder(nn.Module):
@@ -114,7 +118,7 @@ class Bert_Embedder(nn.Module):
         """
         @param vocab_dir: bert的词表地址
         @param bert_model_dir: bert预训练模型地址
-        @param output_all_encoded_layers: 求embedding只有最后一层，只能为False
+        @param output_all_encoded_layers: False: 只输出最后一层
         @param split: 是否对输入进来的单词列表中的单词再次进行bert切分。 比如：
             如果再切分，那么输入['trainyour', 'model'] -> ['train' ,'##you','##r', 'model']，
             并且最后trainyour的词向量相当于'train', '##you', '##r'3个词向量的平均
@@ -128,19 +132,19 @@ class Bert_Embedder(nn.Module):
         self.use_gpu = use_gpu
         self.tokenizer = My_Bert_Tokenizer.from_pretrained(vocab_dir)
         self.bert_encoder = My_Bert_Encoder.from_pretrained(bert_model_dir)
-        print("bert embeder构建完成\n传入token列表得到词向量如[['i','hate','this'],['i','am','your','friend']].")
+        print("InFo: bert embeder构建完成\n传入token列表得到词向量如[['i','hate','this'],['i','am','your','friend']].")
     def forward(self, tokens_lists):
         """
-
-        @param tokens_lists: tokenss(n*list:str): n个句子, 输入的相当于一个batch, 长度不需要相等
+        @param tokens_lists: tokens(n*list:str): n个句子, 输入的相当于一个batch, 长度不需要相等, 为了和其他词向量使用保持一致，
+                                                 输入句子不需要有[CLS]和[SEP], 并且输入句子不应该进行PADDING
         @return:
             embeddings:
                 split为False：将不在bert词表中的词替换为，[UNK], 首尾添加了Bert特有的[CLS]和[SEP]，然后转换为id，送入bert
-                    输出：Tensor(n, max_length+2, word_dim): n个句子中token的embedding,  注意，原始bert输出的词向量，
-                    padding的词的输出词向量不为0
+                    输出：Tensor(n, max_length+2, word_dim): n个句子中token的embedding, tokenize的的时候先添加了[CLS]和[SEP]，
+                     注意，原始bert输出的词向量，padding的词的输出词向量不为0
                 split为True: 将不再bert词表中的词切分为更小的词单元
-                    输出：Tensor(n, max_length, word_dim):n个句子中token的embedding, L长的句子中，其embedding只有前L个向量不为0，
-                    tokenize的的时候先添加了[CLS]和[SEP]，但是最后又排除了[CLS]和[SEP]两个词, 因此最后输出的没有[CLS]和[SEP]了
+                    输出：Tensor(n, max_length+2, word_dim):n个句子中token的embedding, L长的句子中，其embedding只有前L个向量不为0，
+                    tokenize的的时候先添加了[CLS]和[SEP]
             pooled_out: Tensor(n, hidden_size): 每个句子最后一层encoder的第一个词[CLS]经过Linear层和激活函数Tanh()后的Tensor. 其代表了句子信息
 
         """
